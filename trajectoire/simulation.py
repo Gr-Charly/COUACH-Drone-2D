@@ -27,7 +27,7 @@ def simulation_drone(vehicle, canvas, finish_pos):
         dy = finish_pos[1] - vehicle.y
         distance = math.sqrt(dx**2 + dy**2)
 
-        if distance > 1:  # Vérifier si le drone n'est pas encore arrivé
+        if distance > 10:  # Vérifier si le drone n'est pas encore arrivé
             # Calculer l'orientation nécessaire pour se diriger vers la cible
             target_orientation = math.atan2(dy, dx)
             angle_diff = target_orientation - vehicle.orientation
@@ -56,7 +56,7 @@ def simulation_drone(vehicle, canvas, finish_pos):
     def log_position():
         if not running:
             return
-        print(f"Drone position: x={vehicle.x}, y={vehicle.y}, target={finish_pos}")
+        print(f"Drone position: x={vehicle.x}, y={vehicle.y}, orientation={vehicle.orientation} target={finish_pos}")
         canvas.after(5000, log_position)
 
     move()
