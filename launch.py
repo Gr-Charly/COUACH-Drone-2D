@@ -80,20 +80,20 @@ def update_vehicle(vehicle, vehicle_id):
 def start_simulation():
     global ENV, STOP, START, vehicle, finish_id
 
-    if ENV == 1:
+    if ENV == 1 and START == 0:  # Empêche de recréer un drone si la simulation est déjà lancée
         print("Simulation démarrée!")
 
         # Récupérer la position centrale du carré "finish"
         coords = canvas.coords(finish_id)
         finish_pos = ((coords[0] + coords[2]) / 2, (coords[1] + coords[3]) / 2)
 
-        # Passer à la simulation
-        vehicle.drone_id = drone_id  # Assurez-vous que vehicle a un attribut `drone_id`
+        # Assurez-vous que le drone n'est pas redessiné ici
         start()
         simulation_drone(vehicle, canvas, finish_pos)
 
         START = 1
         STOP = 0
+
 
 
 
