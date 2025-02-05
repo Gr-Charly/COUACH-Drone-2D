@@ -5,7 +5,7 @@ import random
 import heapq
 
 class AckermannAgent:
-    def __init__(self, x=100, y=100, theta=0, v=40, L=50):
+    def __init__(self, x=100, y=100, theta=0, v=40, L=100): # Valeur par default
         self.x = x  # Position initiale en x
         self.y = y  # Position initiale en y
         self.theta = theta  # Orientation initiale (angle)
@@ -32,11 +32,10 @@ class Environment:
     def __init__(self, width=500, height=500, num_obstacles=5, grid_resolution=10):
         self.width = width
         self.height = height
-        self.agent = AckermannAgent(x=width // 4, y=height // 4, theta=0, v=40, L=100)
+        self.agent = AckermannAgent(x=width // 4, y=height // 4, theta=0, v=5, L=30) # Valeur choisi
         self.goal_x = width - 100
         self.goal_y = height - 100
         self.obstacles = self.generate_random_obstacles(num_obstacles)
-        self.safe_distance = 30
         self.grid_resolution = grid_resolution  # Résolution de la grille pour A*
         self.root = tk.Tk()
         self.canvas = tk.Canvas(self.root, width=self.width, height=self.height, bg="white")
@@ -113,14 +112,15 @@ class Environment:
             (x - step_size, y + step_size), (x + step_size, y - step_size)
         ]
         valid_neighbors = []
+        safe_distance_path = 30
         for nx, ny in neighbors:
-            if 0 <= nx < self.width and 0 <= ny < self.height and not self.is_collision(nx, ny):
+            if 0 <= nx < self.width and 0 <= ny < self.height and not self.is_collision(nx, ny, safe_distance_path):
                 valid_neighbors.append((nx, ny))
         return valid_neighbors
 
-    def is_collision(self, x, y):
+    def is_collision(self, x, y, safe_distance):
         for ox, oy, size in self.obstacles:
-            if math.sqrt((x - ox) ** 2 + (y - oy) ** 2) < size + self.safe_distance:
+            if math.sqrt((x - ox) ** 2 + (y - oy) ** 2) < size + safe_distance:
                 return True
         return False
 
@@ -131,23 +131,33 @@ class Environment:
         # Vérification si l'agent sort de la fenêtre
         if not (0 <= self.agent.x <= self.width and 0 <= self.agent.y <= self.height):
             print("L'agent a quitté la fenêtre.")
-            self.root.quit()  # Quitter la simulation
             return
 
         # Vérification si l'agent touche un obstacle
-        if self.is_collision(self.agent.x, self.agent.y):
+        safe_distance_agent = 20
+        if self.is_collision(self.agent.x, self.agent.y, safe_distance_agent):
             print("L'agent a touché un obstacle.")
-            self.root.quit()  # Quitter la simulation
             return
 
         # Si le chemin n'est pas trouvé, on le génère une fois
         if not self.path:
             self.path = self.astar(start, goal)
+
             if not self.path:
                 print("Aucun chemin trouvé.")
             elif not self.path_found:
                 print(f"Chemin trouvé.")
                 self.path_found = True  # Marquer que le chemin a été trouvé
+
+                # Garder un point sur deux du chemin
+                self.path = self.path[::10]  
+
+                # Définir l'angle initial vers le premier point
+                first_point = self.path[0]
+                dx = first_point[0] - self.agent.x
+                dy = first_point[1] - self.agent.y
+                self.agent.theta = math.atan2(dy, dx)  # Orientation vers le premier point
+                print(f"Angle initial ajusté à {math.degrees(self.agent.theta):.2f}°")
 
         if self.path:
             # Obtenir le point suivant dans le chemin
@@ -171,13 +181,14 @@ class Environment:
             # Mettre à jour les labels pour afficher les paramètres
             self.x_label.config(text=f"x: {self.agent.x:.2f}")
             self.y_label.config(text=f"y: {self.agent.y:.2f}")
-            self.theta_label.config(text=f"theta: {self.agent.theta:.2f}")
+            self.theta_label.config(text=f"theta: {math.degrees(self.agent.theta):.2f}°")
             self.v_label.config(text=f"v: {self.agent.v}")
             self.L_label.config(text=f"L: {self.agent.L}")
-            self.delta_label.config(text=f"delta: {self.agent.delta:.2f}")
+            self.delta_label.config(text=f"delta: {math.degrees(self.agent.delta):.2f}°")
 
             # Vérifier si l'agent a atteint le point actuel du chemin
             if self.agent.distance_to_goal(current_point[0], current_point[1]) < 5:
+                print(f"Point {self.path_index + 1} atteint.")  # Afficher le message
                 self.path_index += 1  # Passer au point suivant
 
                 if self.path_index >= len(self.path):
@@ -189,6 +200,7 @@ class Environment:
         self.draw_path(self.path)
 
         self.root.after(10, self.update)
+
 
     def draw_path(self, path):
         for (x, y) in path:
