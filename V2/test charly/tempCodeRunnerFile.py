@@ -3,7 +3,6 @@ import tkinter as tk
 import math
 import random
 import heapq
-import time
 
 class AckermannAgent:
     def __init__(self, x=100, y=100, theta=0, v=40, L=100): # Valeur par default
@@ -59,16 +58,6 @@ class Environment:
         self.path_found = False  # Variable pour contrôler l'affichage du message "Chemin trouvé."
         self.path = []  # Liste pour stocker le chemin trouvé
         self.path_index = 0  # Indice du point actuel sur le chemin
-
-        self.start_time = None  # Variable pour stocker le temps de départ
-
-    def start_timer(self):
-        self.start_time = time.time()  # Démarrer le chronomètre
-
-    def get_elapsed_time(self):
-        if self.start_time is None:
-            return 0
-        return time.time() - self.start_time  # Temps écoulé depuis le départs
 
     def generate_random_obstacles(self, num_obstacles):
         obstacles = [(294, 435, 13), (219, 274, 18), (234, 223, 16)]
@@ -139,10 +128,6 @@ class Environment:
         start = (self.agent.x, self.agent.y)
         goal = (self.goal_x, self.goal_y)
 
-        # Si l'agent n'a pas encore commencé, démarrer le chronomètre
-        if self.start_time is None:
-            self.start_timer()
-
         # Vérification si l'agent sort de la fenêtre
         if not (0 <= self.agent.x <= self.width and 0 <= self.agent.y <= self.height):
             print("L'agent a quitté la fenêtre.")
@@ -209,7 +194,7 @@ class Environment:
                 print(f"Point {self.path_index + 1} atteint.")  # Afficher le message
                 self.path_index += 1  # Passer au point suivant
                 if self.path_index >= len(self.path) :
-                    print(f"L'agent a atteint l'objectif en {self.get_elapsed_time():.2f} secondes !")
+                    print("L'agent a atteint l'objectif !")
                     return
 
         self.draw_agent_and_goal()
