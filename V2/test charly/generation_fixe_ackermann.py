@@ -32,7 +32,7 @@ class Environment:
     def __init__(self, width=500, height=500, num_obstacles=5, grid_resolution=10):
         self.width = width
         self.height = height
-        self.agent = AckermannAgent(x=width // 4, y=height // 4, theta=0, v=5, L=30) # Valeur choisi
+        self.agent = AckermannAgent(x=width // 4, y=height // 4, theta=0, v=5, L=5) # Valeur choisi
         self.goal_x = width - 100
         self.goal_y = height - 100
         self.obstacles = self.generate_random_obstacles(num_obstacles)
@@ -112,7 +112,7 @@ class Environment:
             (x - step_size, y + step_size), (x + step_size, y - step_size)
         ]
         valid_neighbors = []
-        safe_distance_path = 30
+        safe_distance_path = 30 # 15 minimum
         for nx, ny in neighbors:
             if 0 <= nx < self.width and 0 <= ny < self.height and not self.is_collision(nx, ny, safe_distance_path):
                 valid_neighbors.append((nx, ny))
@@ -134,7 +134,7 @@ class Environment:
             return
 
         # Vérification si l'agent touche un obstacle
-        safe_distance_agent = 20
+        safe_distance_agent = 10 # Ne pas modifier
         if self.is_collision(self.agent.x, self.agent.y, safe_distance_agent):
             print("L'agent a touché un obstacle.")
             return
@@ -160,6 +160,9 @@ class Environment:
                 print(f"Angle initial ajusté à {math.degrees(self.agent.theta):.2f}°")
 
         if self.path:
+            if (self.goal_x, self.goal_y) not in self.path:
+                self.path.append((self.goal_x, self.goal_y))  # Ajouter le point de l'objectif
+
             # Obtenir le point suivant dans le chemin
             current_point = self.path[self.path_index]
 
@@ -190,10 +193,8 @@ class Environment:
             if self.agent.distance_to_goal(current_point[0], current_point[1]) < 5:
                 print(f"Point {self.path_index + 1} atteint.")  # Afficher le message
                 self.path_index += 1  # Passer au point suivant
-
-                if self.path_index >= len(self.path):
+                if self.path_index >= len(self.path) :
                     print("L'agent a atteint l'objectif !")
-                    self.root.quit()  # Quitter la simulation
                     return
 
         self.draw_agent_and_goal()
