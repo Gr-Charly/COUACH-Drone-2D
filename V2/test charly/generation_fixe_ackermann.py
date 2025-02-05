@@ -5,6 +5,8 @@ import random
 import heapq
 import time
 
+AUTOMATIQUE = True
+
 class AckermannAgent:
     def __init__(self, x=100, y=100, theta=0, v=40, L=100): # Valeur par default
         self.x = x  # Position initiale en x
@@ -178,39 +180,42 @@ class Environment:
             if (self.goal_x, self.goal_y) not in self.path:
                 self.path.append((self.goal_x, self.goal_y))  # Ajouter le point de l'objectif
 
-            # Obtenir le point suivant dans le chemin
-            current_point = self.path[self.path_index]
+            if AUTOMATIQUE :
+                # Obtenir le point suivant dans le chemin
+                current_point = self.path[self.path_index]
 
-            # Calculer l'angle vers le prochain point
-            dx = current_point[0] - self.agent.x
-            dy = current_point[1] - self.agent.y
-            target_angle = math.atan2(dy, dx)
+                # Calculer l'angle vers le prochain point
+                dx = current_point[0] - self.agent.x
+                dy = current_point[1] - self.agent.y
+                target_angle = math.atan2(dy, dx)
 
-            # Calculer l'angle de braquage nécessaire pour tourner vers l'objectif
-            delta = target_angle - self.agent.theta
-            if delta > math.pi:
-                delta -= 2 * math.pi
-            elif delta < -math.pi:
-                delta += 2 * math.pi
+                # Calculer l'angle de braquage nécessaire pour tourner vers l'objectif
+                delta = target_angle - self.agent.theta
+                if delta > math.pi:
+                    delta -= 2 * math.pi
+                elif delta < -math.pi:
+                    delta += 2 * math.pi
 
-            # Mettre à jour la position de l'agent
-            self.agent.update_position(delta)
+                # Mettre à jour la position de l'agent
+                self.agent.update_position(delta)
 
-            # Mettre à jour les labels pour afficher les paramètres
-            self.x_label.config(text=f"x: {self.agent.x:.2f}")
-            self.y_label.config(text=f"y: {self.agent.y:.2f}")
-            self.theta_label.config(text=f"theta: {math.degrees(self.agent.theta):.2f}°")
-            self.v_label.config(text=f"v: {self.agent.v}")
-            self.L_label.config(text=f"L: {self.agent.L}")
-            self.delta_label.config(text=f"delta: {math.degrees(self.agent.delta):.2f}°")
+                # Mettre à jour les labels pour afficher les paramètres
+                self.x_label.config(text=f"x: {self.agent.x:.2f}")
+                self.y_label.config(text=f"y: {self.agent.y:.2f}")
+                self.theta_label.config(text=f"theta: {math.degrees(self.agent.theta):.2f}°")
+                self.v_label.config(text=f"v: {self.agent.v}")
+                self.L_label.config(text=f"L: {self.agent.L}")
+                self.delta_label.config(text=f"delta: {math.degrees(self.agent.delta):.2f}°")
 
-            # Vérifier si l'agent a atteint le point actuel du chemin
-            if self.agent.distance_to_goal(current_point[0], current_point[1]) < 5:
-                print(f"Point {self.path_index + 1} atteint.")  # Afficher le message
-                self.path_index += 1  # Passer au point suivant
-                if self.path_index >= len(self.path) :
-                    print(f"L'agent a atteint l'objectif en {self.get_elapsed_time():.2f} secondes !")
-                    return
+                tolerance = 15 # tolerance pour dire atteint
+                # Vérifier si l'agent a atteint le point actuel du chemin
+                if self.agent.distance_to_goal(current_point[0], current_point[1]) < tolerance: 
+                    print(f"Point {self.path_index + 1} atteint.")  # Afficher le message
+                    self.path_index += 1  # Passer au point suivant
+                    if self.path_index >= len(self.path) :
+                        print(f"L'agent a atteint l'objectif en {self.get_elapsed_time():.2f} secondes !")
+                        return
+
 
         self.draw_agent_and_goal()
         self.draw_path(self.path)
