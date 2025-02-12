@@ -3,10 +3,12 @@ import tkinter as tk
 import math
 import random
 import heapq
+import time
 
+AUTOMATIQUE = True
 
 class AckermannAgent:
-    def __init__(self, x=100, y=100, theta=0, v=40, L=50):
+    def __init__(self, x=100, y=100, theta=0, v=40, L=100): # Valeur par default
         self.x = x  # Position initiale en x
         self.y = y  # Position initiale en y
         self.theta = theta  # Orientation initiale (angle)
@@ -29,21 +31,47 @@ class AckermannAgent:
     def distance_to_goal(self, goal_x, goal_y):
         return math.sqrt((self.x - goal_x) ** 2 + (self.y - goal_y) ** 2)
 
-
 class Environment:
     def __init__(self, width=500, height=500, num_obstacles=5, grid_resolution=10):
         self.width = width
         self.height = height
-        self.agent = AckermannAgent(x=width // 4, y=height // 4, theta=0, v=40, L=100)
+        self.agent = AckermannAgent(x=width // 4, y=height // 4, theta=0, v=5, L=50) # Valeur choisi
         self.goal_x = width - 100
         self.goal_y = height - 100
         self.obstacles = self.generate_random_obstacles(num_obstacles)
-        self.safe_distance = 30
         self.grid_resolution = grid_resolution  # Résolution de la grille pour A*
         self.root = tk.Tk()
         self.canvas = tk.Canvas(self.root, width=self.width, height=self.height, bg="white")
         self.canvas.pack()
+
+        # Labels pour afficher les paramètres
+        self.x_label = tk.Label(self.root, text=f"x: {self.agent.x}")
+        self.x_label.pack()
+        self.y_label = tk.Label(self.root, text=f"y: {self.agent.y}")
+        self.y_label.pack()
+        self.theta_label = tk.Label(self.root, text=f"theta: {self.agent.theta}")
+        self.theta_label.pack()
+        self.v_label = tk.Label(self.root, text=f"v: {self.agent.v}")
+        self.v_label.pack()
+        self.L_label = tk.Label(self.root, text=f"L: {self.agent.L}")
+        self.L_label.pack()
+        self.delta_label = tk.Label(self.root, text=f"delta: {self.agent.delta}")
+        self.delta_label.pack()
+
         self.path_found = False  # Variable pour contrôler l'affichage du message "Chemin trouvé."
+        self.path = []  # Liste pour stocker le chemin trouvé
+        self.trajectory = []  # Liste pour stocker la trajectoire de l'agent
+        self.path_index = 0  # Indice du point actuel sur le chemin
+
+        self.start_time = None  # Variable pour stocker le temps de départ
+
+    def start_timer(self):
+        self.start_time = time.time()  # Démarrer le chronomètre
+
+    def get_elapsed_time(self):
+        if self.start_time is None:
+            return 0
+        return time.time() - self.start_time  # Temps écoulé depuis le départs
 
     def generate_random_obstacles(self, num_obstacles):
         obstacles = [(294, 435, 13), (219, 274, 18), (234, 223, 16)]
@@ -98,37 +126,114 @@ class Environment:
             (x - step_size, y + step_size), (x + step_size, y - step_size)
         ]
         valid_neighbors = []
+        safe_distance_path = 30 # 15 minimum
         for nx, ny in neighbors:
-            if 0 <= nx < self.width and 0 <= ny < self.height and not self.is_collision(nx, ny):
+            if 0 <= nx < self.width and 0 <= ny < self.height and not self.is_collision(nx, ny, safe_distance_path):
                 valid_neighbors.append((nx, ny))
         return valid_neighbors
 
-    def is_collision(self, x, y):
+    def is_collision(self, x, y, safe_distance):
         for ox, oy, size in self.obstacles:
-            if math.sqrt((x - ox) ** 2 + (y - oy) ** 2) < size + self.safe_distance:
+            if math.sqrt((x - ox) ** 2 + (y - oy) ** 2) < size + safe_distance:
                 return True
         return False
 
     def update(self):
         start = (self.agent.x, self.agent.y)
         goal = (self.goal_x, self.goal_y)
-        path = self.astar(start, goal)
 
-        if not path:
-            print("Aucun chemin trouvé.")
-        elif not self.path_found :
-            print(f"Chemin trouvé.")
-            self.path_found = True  # Marquer que le chemin a été trouvé
+        # Si l'agent n'a pas encore commencé, démarrer le chronomètre
+        if self.start_time is None:
+            self.start_timer()
+
+        # Vérification si l'agent sort de la fenêtre
+        if not (0 <= self.agent.x <= self.width and 0 <= self.agent.y <= self.height):
+            print("L'agent a quitté la fenêtre.")
+            return
+
+        # Vérification si l'agent touche un obstacle
+        safe_distance_agent = 10 # Ne pas modifier
+        if self.is_collision(self.agent.x, self.agent.y, safe_distance_agent):
+            print("L'agent a touché un obstacle.")
+            return
+
+        # Si le chemin n'est pas trouvé, on le génère une fois
+        if not self.path:
+            self.path = self.astar(start, goal)
+
+            if not self.path:
+                print("Aucun chemin trouvé.")
+            elif not self.path_found:
+                print(f"Chemin trouvé.")
+                self.path_found = True  # Marquer que le chemin a été trouvé
+
+                # Garder un point sur deux du chemin
+                self.path = self.path[::10]  
+
+                # Définir l'angle initial vers le premier point
+                first_point = self.path[0]
+                dx = first_point[0] - self.agent.x
+                dy = first_point[1] - self.agent.y
+                self.agent.theta = math.atan2(dy, dx)  # Orientation vers le premier point
+                print(f"Angle initial ajusté à {math.degrees(self.agent.theta):.2f}°")
+
+        if self.path:
+            if (self.goal_x, self.goal_y) not in self.path:
+                self.path.append((self.goal_x, self.goal_y))  # Ajouter le point de l'objectif
+
+            if AUTOMATIQUE :
+                # Obtenir le point suivant dans le chemin
+                current_point = self.path[self.path_index]
+
+                # Calculer l'angle vers le prochain point
+                dx = current_point[0] - self.agent.x
+                dy = current_point[1] - self.agent.y
+                target_angle = math.atan2(dy, dx)
+
+                # Calculer l'angle de braquage nécessaire pour tourner vers l'objectif
+                delta = target_angle - self.agent.theta
+                if delta > math.pi:
+                    delta -= 2 * math.pi
+                elif delta < -math.pi:
+                    delta += 2 * math.pi
+
+                # Mettre à jour la position de l'agent
+                self.agent.update_position(delta)
+
+                # Ajouter la position actuelle de l'agent à la trajectoire
+                self.trajectory.append((self.agent.x, self.agent.y))
+
+                # Mettre à jour les labels pour afficher les paramètres
+                self.x_label.config(text=f"x: {self.agent.x:.2f}")
+                self.y_label.config(text=f"y: {self.agent.y:.2f}")
+                self.theta_label.config(text=f"theta: {math.degrees(self.agent.theta):.2f}°")
+                self.v_label.config(text=f"v: {self.agent.v}")
+                self.L_label.config(text=f"L: {self.agent.L}")
+                self.delta_label.config(text=f"delta: {math.degrees(self.agent.delta):.2f}°")
+
+                tolerance = 15 # tolerance pour dire atteint
+                # Vérifier si l'agent a atteint le point actuel du chemin
+                if self.agent.distance_to_goal(current_point[0], current_point[1]) < tolerance: 
+                    print(f"Point {self.path_index + 1} atteint.")  # Afficher le message
+                    self.path_index += 1  # Passer au point suivant
+                    if self.path_index >= len(self.path) :
+                        print(f"L'agent a atteint l'objectif en {self.get_elapsed_time():.2f} secondes !")
+                        return
 
         self.draw_agent_and_goal()
-        self.draw_path(path)
-
-        if self.agent.distance_to_goal(self.goal_x, self.goal_y) < 10:
-            print("L'agent a atteint l'objectif !")
-            return
+        self.draw_path(self.path)
+        self.draw_trajectory(self.trajectory)  # Dessiner la trajectoire actuelle
 
         self.root.after(10, self.update)
 
+    def draw_trajectory(self, trajectory):
+        if len(trajectory) > 1:
+            for i in range(1, len(trajectory)):
+                x1, y1 = trajectory[i - 1]
+                x2, y2 = trajectory[i]
+                self.canvas.create_line(x1, y1, x2, y2, fill="blue", width=2) 
+
+    
     def draw_path(self, path):
         for (x, y) in path:
             if 0 <= x < self.width and 0 <= y < self.height:
@@ -137,7 +242,6 @@ class Environment:
     def start(self):
         self.update()
         self.root.mainloop()
-
 
 if __name__ == "__main__":
     env = Environment(num_obstacles=5, grid_resolution=5)  # Résolution fine pour plus de points

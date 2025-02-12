@@ -112,6 +112,8 @@ class Environment:
         return False
 
     def update(self):
+        self.frame_iteration += 1
+        
         start = (self.agent.x, self.agent.y)
         goal = (self.goal_x, self.goal_y)
 

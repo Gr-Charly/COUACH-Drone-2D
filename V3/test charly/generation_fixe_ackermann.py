@@ -60,6 +60,7 @@ class Environment:
 
         self.path_found = False  # Variable pour contrôler l'affichage du message "Chemin trouvé."
         self.path = []  # Liste pour stocker le chemin trouvé
+        self.trajectory = []  # Liste pour stocker la trajectoire de l'agent
         self.path_index = 0  # Indice du point actuel sur le chemin
 
         self.start_time = None  # Variable pour stocker le temps de départ
@@ -199,6 +200,9 @@ class Environment:
                 # Mettre à jour la position de l'agent
                 self.agent.update_position(delta)
 
+                # Ajouter la position actuelle de l'agent à la trajectoire
+                self.trajectory.append((self.agent.x, self.agent.y))
+
                 # Mettre à jour les labels pour afficher les paramètres
                 self.x_label.config(text=f"x: {self.agent.x:.2f}")
                 self.y_label.config(text=f"y: {self.agent.y:.2f}")
@@ -216,13 +220,20 @@ class Environment:
                         print(f"L'agent a atteint l'objectif en {self.get_elapsed_time():.2f} secondes !")
                         return
 
-
         self.draw_agent_and_goal()
         self.draw_path(self.path)
+        self.draw_trajectory(self.trajectory)  # Dessiner la trajectoire actuelle
 
         self.root.after(10, self.update)
 
+    def draw_trajectory(self, trajectory):
+        if len(trajectory) > 1:
+            for i in range(1, len(trajectory)):
+                x1, y1 = trajectory[i - 1]
+                x2, y2 = trajectory[i]
+                self.canvas.create_line(x1, y1, x2, y2, fill="blue", width=2) 
 
+    
     def draw_path(self, path):
         for (x, y) in path:
             if 0 <= x < self.width and 0 <= y < self.height:
