@@ -33,7 +33,7 @@ class Environment:
     def __init__(self, width=500, height=500, num_obstacles=5, grid_resolution=10):
         self.width = width
         self.height = height
-        self.agent = AckermannAgent(x=width // 4, y=height // 4, theta=0, v=5, L=50) # Valeur choisi
+        self.agent = AckermannAgent(x=width // 4, y=height // 4, theta=0, v=5, L=10) # Valeur choisi
         self.goal_x = width - 100
         self.goal_y = height - 100
         self.obstacles = self.generate_random_obstacles(num_obstacles)

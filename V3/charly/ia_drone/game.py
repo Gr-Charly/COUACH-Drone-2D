@@ -1,21 +1,54 @@
-import numpy as np
-import tkinter as tk
-import math
+import pygame
 import random
-import heapq
-import time
+import math
+from enum import Enum
+from collections import namedtuple
+import numpy as np
+
+pygame.init()
+font = pygame.font.Font('arial.ttf', 25)
+
+class Direction(Enum):
+    FORWARD = 1
+    LEFT = 2
+    RIGHT = 3
+
+Point = namedtuple('Point', 'x, y')
+
+# rgb colors
+WHITE = (255, 255, 255)
+RED = (200, 0, 0)
+BLUE1 = (0, 0, 255)
+BLUE2 = (0, 100, 255)
+BLACK = (0, 0, 0)
+
+BLOCK_SIZE = 20
+SPEED = 40
 
 class AckermannAgent:
-    def __init__(self, x=100, y=100, theta=0, v=40, L=100):
+    def __init__(self, x=100, y=100, theta=0, v=0, L=10):
         self.x = x
         self.y = y
         self.theta = theta
-        self.v = v
+        self.v = v  # Vitesse initiale
         self.L = L
-        self.delta = 0
+        self.delta = 0  # Angle de braquage initial
+        self.max_speed = 40  # Vitesse maximale
+        self.min_speed = 0  # Vitesse minimale (recul)
+        self.acceleration = 2  # Accélération
+        self.deceleration = 5  # Décélération
 
     def update_position(self, delta, dt=0.1):
         self.delta = delta
+
+        # Mettre à jour la vitesse en fonction de l'accélération ou de la décélération
+        if self.v < self.max_speed:
+            self.v += self.acceleration * dt
+        if self.v > self.max_speed:
+            self.v = self.max_speed
+        if self.v < self.min_speed:
+            self.v = self.min_speed
+
         self.x += self.v * math.cos(self.theta) * dt
         self.y += self.v * math.sin(self.theta) * dt
         self.theta += (self.v / self.L) * math.tan(self.delta) * dt
@@ -23,226 +56,140 @@ class AckermannAgent:
     def get_position(self):
         return self.x, self.y, self.theta
 
-    def get_state(self, goal_x, goal_y):
-        state = [
-            self.x,
-            self.y,
-            self.theta,
-            goal_x - self.x,
-            goal_y - self.y
-        ]
-        return np.array(state, dtype=float)
-
     def distance_to_goal(self, goal_x, goal_y):
         return math.sqrt((self.x - goal_x) ** 2 + (self.y - goal_y) ** 2)
 
-class Environment:
-    def __init__(self, width=500, height=500, num_obstacles=5, grid_resolution=10):
-        self.width = width
-        self.height = height
-        self.agent = AckermannAgent(x=width // 4, y=height // 4, theta=0, v=5, L=50)
-        self.goal_x = width - 100
-        self.goal_y = height - 100
-        self.obstacles = self.generate_random_obstacles(num_obstacles)
-        self.grid_resolution = grid_resolution
-        self.root = tk.Tk()
-        self.canvas = tk.Canvas(self.root, width=self.width, height=self.height, bg="white")
-        self.canvas.pack()
+class BoatGameAI:
 
-        self.x_label = tk.Label(self.root, text=f"x: {self.agent.x}")
-        self.x_label.pack()
-        self.y_label = tk.Label(self.root, text=f"y: {self.agent.y}")
-        self.y_label.pack()
-        self.theta_label = tk.Label(self.root, text=f"theta: {self.agent.theta}")
-        self.theta_label.pack()
-        self.v_label = tk.Label(self.root, text=f"v: {self.agent.v}")
-        self.v_label.pack()
-        self.L_label = tk.Label(self.root, text=f"L: {self.agent.L}")
-        self.L_label.pack()
-        self.delta_label = tk.Label(self.root, text=f"delta: {self.agent.delta}")
-        self.delta_label.pack()
+    def __init__(self, w=640, h=480):
+        self.w = w
+        self.h = h
+        self.display = pygame.display.set_mode((self.w, self.h))
+        pygame.display.set_caption('Boat Game')
+        self.clock = pygame.time.Clock()
+        self.reset()
 
-        self.path_found = False
-        self.path = []
-        self.trajectory = []
-        self.path_index = 0
-        self.start_time = None
+    def reset(self, regenerate=True):
+        self.boat = AckermannAgent(x=self.w / 2, y=self.h / 2)
+        self.score = 0
+        if regenerate:
+            self.initial_path = self._generate_path()
+            self.path = self.initial_path.copy()
+            self.obstacles = self._generate_obstacles()
+        else:
+            self.path = self.initial_path.copy()
+        self.frame_iteration = 0
+        self.current_goal = self._find_closest_goal()
+        self.previous_distance = self.boat.distance_to_goal(self.current_goal.x, self.current_goal.y)
 
-    def reset(self):
-        self.agent = AckermannAgent(x=self.width // 4, y=self.height // 4, theta=0, v=5, L=50)
-        self.path_found = False
-        self.path = []
-        self.trajectory = []
-        self.path_index = 0
-        self.start_time = None
-        self.canvas.delete("all")
-        self.update()
+    def _generate_path(self):
+        path = []
+        for _ in range(5):
+            x = random.randint(0, (self.w - BLOCK_SIZE) // BLOCK_SIZE) * BLOCK_SIZE
+            y = random.randint(0, (self.h - BLOCK_SIZE) // BLOCK_SIZE) * BLOCK_SIZE
+            path.append(Point(x, y))
+        return path
 
-    def start_timer(self):
-        self.start_time = time.time()
-
-    def get_elapsed_time(self):
-        if self.start_time is None:
-            return 0
-        return time.time() - self.start_time
-
-    def generate_random_obstacles(self, num_obstacles):
-        obstacles = [(294, 435, 13), (219, 274, 18), (234, 223, 16)]
+    def _generate_obstacles(self):
+        obstacles = []
+        for _ in range(0):
+            x = random.randint(0, (self.w - BLOCK_SIZE) // BLOCK_SIZE) * BLOCK_SIZE
+            y = random.randint(0, (self.h - BLOCK_SIZE) // BLOCK_SIZE) * BLOCK_SIZE
+            obstacles.append(Point(x, y))
         return obstacles
 
-    def draw_agent_and_goal(self):
-        self.canvas.delete("all")
-        x, y, theta = self.agent.get_position()
-        self.canvas.create_oval(x - 10, y - 10, x + 10, y + 10, fill="blue")
-        self.canvas.create_line(x, y, x + 20 * math.cos(theta), y + 20 * math.sin(theta), arrow=tk.LAST)
-        self.canvas.create_oval(self.goal_x - 10, self.goal_y - 10, self.goal_x + 10, self.goal_y + 10, fill="green")
-        for ox, oy, size in self.obstacles:
-            self.canvas.create_oval(ox - size, oy - size, ox + size, oy + size, fill="red")
+    def play_step(self, action):
+        self.frame_iteration += 1
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                quit()
 
-    def heuristic(self, a, b):
-        return math.sqrt((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2)
+        self._move(action)
+        self.boat.update_position(self.boat.delta)
 
-    def astar(self, start, goal):
-        open_set = []
-        heapq.heappush(open_set, (0, start))
-        came_from = {}
-        g_score = {start: 0}
-        f_score = {start: self.heuristic(start, goal)}
+        reward = 0
+        game_over = False
 
-        while open_set:
-            _, current = heapq.heappop(open_set)
-            if current == goal:
-                path = []
-                while current in came_from:
-                    path.append(current)
-                    current = came_from[current]
-                path.reverse()
-                return path
+        # Vérifier les collisions
+        if self.is_collision() or self.frame_iteration > 100 * len(self.path):
+            game_over = True
+            reward = -100  # Pénalité importante pour les collisions
+            return reward, game_over, self.score
 
-            for neighbor in self.get_neighbors(current):
-                tentative_g_score = g_score[current] + 1
-                if neighbor not in g_score or tentative_g_score < g_score[neighbor]:
-                    came_from[neighbor] = current
-                    g_score[neighbor] = tentative_g_score
-                    f_score[neighbor] = g_score[neighbor] + self.heuristic(neighbor, goal)
-                    heapq.heappush(open_set, (f_score[neighbor], neighbor))
+        # Calculer la récompense de proximité pour le point cible le plus proche
+        current_distance = self.boat.distance_to_goal(self.current_goal.x, self.current_goal.y)
+        reward = (self.previous_distance - current_distance) * 10  # Récompense continue basée sur la diminution de la distance
 
-        return []
+        # Pénalité pour la proximité des obstacles
+        for obs in self.obstacles:
+            if self.boat.distance_to_goal(obs.x, obs.y) < BLOCK_SIZE * 2:
+                reward -= 50  # Pénalité pour être trop proche d'un obstacle
 
-    def get_neighbors(self, node):
-        x, y = node
-        step_size = self.grid_resolution
-        neighbors = [
-            (x + step_size, y), (x - step_size, y),
-            (x, y + step_size), (x, y - step_size),
-            (x + step_size, y + step_size), (x - step_size, y - step_size),
-            (x - step_size, y + step_size), (x + step_size, y - step_size)
-        ]
-        valid_neighbors = []
-        safe_distance_path = 30
-        for nx, ny in neighbors:
-            if 0 <= nx < self.width and 0 <= ny < self.height and not self.is_collision(nx, ny, safe_distance_path):
-                valid_neighbors.append((nx, ny))
-        return valid_neighbors
+        # Mettre à jour le score et l'objectif si le point est atteint
+        if current_distance < BLOCK_SIZE:
+            self.score += 1
+            reward += 100  # Récompense supplémentaire pour atteindre un point
+            self.path.remove(self.current_goal)
+            if self.path:
+                self.current_goal = self._find_closest_goal()
+                self.previous_distance = self.boat.distance_to_goal(self.current_goal.x, self.current_goal.y)
 
-    def is_collision(self, x, y, safe_distance):
-        for ox, oy, size in self.obstacles:
-            if math.sqrt((x - ox) ** 2 + (y - oy) ** 2) < size + safe_distance:
-                return True
+        self.previous_distance = current_distance
+
+        self._update_ui()
+        self.clock.tick(SPEED)
+        return reward, game_over, self.score
+
+    def _find_closest_goal(self):
+        boat_x, boat_y, _ = self.boat.get_position()
+        closest_goal = min(self.path, key=lambda goal: self.boat.distance_to_goal(goal.x, goal.y))
+        return closest_goal
+
+    def _update_ui(self):
+        self.display.fill(BLACK)
+        x, y, _ = self.boat.get_position()
+        pygame.draw.rect(self.display, BLUE1, pygame.Rect(x, y, BLOCK_SIZE, BLOCK_SIZE))
+        pygame.draw.rect(self.display, BLUE2, pygame.Rect(x + 4, y + 4, 12, 12))
+
+        for pt in self.path:
+            if pt == self.current_goal:
+                # Dessiner le point le plus proche en vert
+                pygame.draw.rect(self.display, (0, 255, 0), pygame.Rect(pt.x, pt.y, BLOCK_SIZE, BLOCK_SIZE))
+            else:
+                # Dessiner les autres points en rouge
+                pygame.draw.rect(self.display, RED, pygame.Rect(pt.x, pt.y, BLOCK_SIZE, BLOCK_SIZE))
+
+        for pt in self.obstacles:
+            pygame.draw.rect(self.display, (100, 100, 100), pygame.Rect(pt.x, pt.y, BLOCK_SIZE, BLOCK_SIZE))
+
+        text = font.render("Score: " + str(self.score), True, WHITE)
+        self.display.blit(text, [0, 0])
+        pygame.display.flip()
+
+    def _move(self, action):
+        max_delta = 0.5  # Valeur maximale pour l'angle de braquage
+        delta_increment = 0.1  # Incrément pour ajuster l'angle de braquage
+
+        if np.array_equal(action, [1, 0, 0]):
+            # Accélérer tout droit
+            self.boat.delta = 0
+        elif np.array_equal(action, [0, 1, 0]):
+            # Tourner à gauche
+            self.boat.delta = max(self.boat.delta - delta_increment, -max_delta)
+        elif np.array_equal(action, [0, 0, 1]):
+            # Tourner à droite
+            self.boat.delta = min(self.boat.delta + delta_increment, max_delta)
+
+        self.boat.update_position(self.boat.delta)
+
+    def is_collision(self, pt=None):
+        if pt is None:
+            boat_x, boat_y, _ = self.boat.get_position()
+            pt = Point(boat_x, boat_y)
+
+        if pt.x > self.w or pt.x < 0 or pt.y > self.h or pt.y < 0:
+            return True
+        if any(self.boat.distance_to_goal(obs.x, obs.y) < BLOCK_SIZE for obs in self.obstacles):
+            return True
         return False
-
-    def get_reward(self):
-        distance = self.agent.distance_to_goal(self.goal_x, self.goal_y)
-        if distance < 15:
-            return 100
-        elif self.is_collision(self.agent.x, self.agent.y, 10):
-            return -100
-        else:
-            return -distance
-
-    def update(self):
-        start = (self.agent.x, self.agent.y)
-        goal = (self.goal_x, self.goal_y)
-
-        if self.start_time is None:
-            self.start_timer()
-
-        if not (0 <= self.agent.x <= self.width and 0 <= self.agent.y <= self.height):
-            print("L'agent a quitté la fenêtre.")
-            return
-
-        safe_distance_agent = 10
-        if self.is_collision(self.agent.x, self.agent.y, safe_distance_agent):
-            print("L'agent a touché un obstacle.")
-            return
-
-        if not self.path:
-            self.path = self.astar(start, goal)
-
-            if not self.path:
-                print("Aucun chemin trouvé.")
-                return
-            elif not self.path_found:
-                print(f"Chemin trouvé.")
-                self.path_found = True
-                self.path = self.path[::10]
-                first_point = self.path[0]
-                dx = first_point[0] - self.agent.x
-                dy = first_point[1] - self.agent.y
-                self.agent.theta = math.atan2(dy, dx)
-                print(f"Angle initial ajusté à {math.degrees(self.agent.theta):.2f}°")
-
-        if self.path:
-            if (self.goal_x, self.goal_y) not in self.path:
-                self.path.append((self.goal_x, self.goal_y))
-
-            current_point = self.path[self.path_index]
-            dx = current_point[0] - self.agent.x
-            dy = current_point[1] - self.agent.y
-            target_angle = math.atan2(dy, dx)
-            delta = target_angle - self.agent.theta
-            if delta > math.pi:
-                delta -= 2 * math.pi
-            elif delta < -math.pi:
-                delta += 2 * math.pi
-            self.agent.update_position(delta)
-            self.trajectory.append((self.agent.x, self.agent.y))
-            self.x_label.config(text=f"x: {self.agent.x:.2f}")
-            self.y_label.config(text=f"y: {self.agent.y:.2f}")
-            self.theta_label.config(text=f"theta: {math.degrees(self.agent.theta):.2f}°")
-            self.v_label.config(text=f"v: {self.agent.v}")
-            self.L_label.config(text=f"L: {self.agent.L}")
-            self.delta_label.config(text=f"delta: {math.degrees(self.agent.delta):.2f}°")
-            tolerance = 15
-            if self.agent.distance_to_goal(current_point[0], current_point[1]) < tolerance:
-                print(f"Point {self.path_index + 1} atteint.")
-                self.path_index += 1
-                if self.path_index >= len(self.path):
-                    print(f"L'agent a atteint l'objectif en {self.get_elapsed_time():.2f} secondes !")
-                    return
-
-        self.draw_agent_and_goal()
-        self.draw_path(self.path)
-        self.draw_trajectory(self.trajectory)
-
-        self.root.after(10, self.update)
-
-    def draw_trajectory(self, trajectory):
-        if len(trajectory) > 1:
-            for i in range(1, len(trajectory)):
-                x1, y1 = trajectory[i - 1]
-                x2, y2 = trajectory[i]
-                self.canvas.create_line(x1, y1, x2, y2, fill="blue", width=2)
-
-    def draw_path(self, path):
-        for (x, y) in path:
-            if 0 <= x < self.width and 0 <= y < self.height:
-                self.canvas.create_oval(x - 3, y - 3, x + 3, y + 3, fill="purple")
-
-    def start(self):
-        self.update()
-        self.root.mainloop()
-
-if __name__ == "__main__":
-    env = Environment(num_obstacles=5, grid_resolution=5)
-    env.start()
