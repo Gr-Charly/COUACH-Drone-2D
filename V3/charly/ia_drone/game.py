@@ -129,7 +129,7 @@ class BoatGameAI:
         # Mettre à jour le score et l'objectif si le point est atteint
         if current_distance < BLOCK_SIZE:
             self.score += 1
-            reward += 100  # Récompense supplémentaire pour atteindre un point
+            reward += 200 +  (100 / (current_distance + 0.1))# Récompense supplémentaire pour atteindre un point
             self.path.remove(self.current_goal)
             if self.path:
                 self.current_goal = self._find_closest_goal()
