@@ -1,3 +1,5 @@
+#Pour lancer le code, il faut d'abord importer les librairies numpy, gym, torch, scipy et matplotlib
+
 import numpy as np
 import gym
 from gym import spaces
@@ -348,8 +350,6 @@ class DDPG:
         current_q = self.critic(state, action) # le critique principale estime l'action actuelle
         critic_loss = nn.MSELoss()(current_q, target_q.detach()) # on calcul la différence en la prédiction de l'action effectué et la prochaine (erreur quadratique moyenne)
 
-        actor_loss = -self.critic(state, self.actor(state)).mean() # on calcul la perte en tant qu'opposé de la valeur Q
-
         # ici on optimise/met à jour le critic
         self.critic_optimizer.zero_grad() # réinitialisation des gradient
         critic_loss.backward() # on calcul les gradient de la perte
@@ -357,6 +357,7 @@ class DDPG:
         self.critic_optimizer.step() # on met à jour les poids du critic
 
         # ici on optimise/met à jour l'acteur
+        actor_loss = -self.critic(state, self.actor(state)).mean() # on calcul la perte en tant qu'opposé de la valeur Q
         self.actor_optimizer.zero_grad() # on reinitialise les gradients
         actor_loss.backward() # on les calcul
         self.actor_optimizer.step() #on met à jour les poids
@@ -381,7 +382,7 @@ env = AckermannEnv(render=False)
 agent = DDPG(state_dim=3, action_dim=2) # 3 dimension pour l'état (x,y,z) et 2 pour les actions (vitesse et angle de braquage) 
 num_episodes = 2000
 batch_size = 20 # 20 essais différents pour l'entrainement (64 par défaut)
-eval_interval = 1 # nombre de fois que l'on veut visualiser notre agent
+eval_interval = 5 # nombre de fois que l'on veut visualiser notre agent
 
 # paramétrage pour chaque épisode
 for episode in range(num_episodes):
@@ -407,7 +408,7 @@ for episode in range(num_episodes):
         print(f'Episode {episode}, Total Reward: {total_reward:.2f}, Points Reached: {env.points_reached}, Reason: {reason}')
 
     # Évaluation permettant une visualisation de l'agent lors d'un entrainement
-    if (episode + 1) % eval_interval == 10: # interval d'une évaluation, ici 10
+    if (episode + 1) % eval_interval == 0: # on vérifie si l'episode en cours est un multiple du pas d'interval (ici 5)
         agent.save(f"ddpg_model_episode_{episode+1}") # on sauvegarde les poids que lors d'évaluation
         eval_env = AckermannEnv(render=True)
         state = eval_env.reset()
