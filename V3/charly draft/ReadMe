@@ -1,9 +1,0 @@
-Pour le snake game :
-
-pip install numpy
-
-pip install matplotlib ipython
-
-pip install pygame
-
-pip3 install torch torchvision
