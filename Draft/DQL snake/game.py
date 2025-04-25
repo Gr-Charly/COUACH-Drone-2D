@@ -4,9 +4,11 @@ import math
 from enum import Enum
 from collections import namedtuple
 import numpy as np
+import os
 
 pygame.init()
-font = pygame.font.Font('arial.ttf', 25)
+font_path = os.path.join(os.path.dirname(__file__), 'arial.ttf')
+font = pygame.font.Font(font_path, 25)
 
 class Direction(Enum):
     FORWARD = 1
